@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+
+:root {
+  --bg-deep: #050505;
+  --bg-panel: #0d0d0d;
+  --accent-lime: #bfff00;
+  --accent-purple: #8b5cf6;
+  --text-main: #ffffff;
+  --text-dim: #737373;
+  --border-glass: rgba(255, 255, 255, 0.05);
+  --up: #22c55e;
+  --down: #ef4444;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow: hidden; /* App feel */
+}
+
+.terminal-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  grid-template-rows: 60px 40px 1fr;
+  height: 100vh;
+}
+
+/* Header */
+header {
+  grid-column: 1 / -1;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-glass);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  justify-content: space-between;
+}
+
+/* Ticker */
+.ticker-bar {
+  grid-column: 1 / -1;
+  background: #000;
+  border-bottom: 1px solid var(--border-glass);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+}
+
+/* Main Area */
+.main-stage {
+  padding: 1rem;
+  background: #000;
+  position: relative;
+}
+
+.chart-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+}
+
+/* Side Panel */
+.side-panel {
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-glass);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-glass);
+  border-radius: 1rem;
+  padding: 1.25rem;
+}
+
+.price-up { color: var(--up); }
+.price-down { color: var(--down); }
+
+.glow-text {
+  text-shadow: 0 0 15px var(--accent-lime);
+}
+
+.btn-lime {
+  background: var(--accent-lime);
+  color: #000;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.btn-lime:active { transform: scale(0.95); }
+
+/* Animations */
+@keyframes slide {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+.animate-ticker {
+  display: flex;
+  animation: slide 30s linear infinite;
+}
