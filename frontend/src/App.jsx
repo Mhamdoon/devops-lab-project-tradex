@@ -10,7 +10,10 @@ import {
   Bell,
   Menu,
   ChevronRight,
-  Plus
+  Plus,
+  BookOpen,
+  Send,
+  History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -50,12 +53,16 @@ const TradingViewWidget = ({ symbol = "BINANCE:BTCUSDT" }) => {
 function App() {
   const [prices, setPrices] = useState({});
   const [watchlist, setWatchlist] = useState([]);
+  const [journal, setJournal] = useState([]);
   const [selectedSymbol, setSelectedSymbol] = useState("BINANCE:BTCUSDT");
   const [isHealthOk, setIsHealthOk] = useState(false);
+  const [isJournalOpen, setIsJournalOpen] = useState(false);
+  const [newNote, setNewNote] = useState({ title: '', content: '' });
 
   useEffect(() => {
     fetchPrices();
     fetchWatchlist();
+    fetchJournal();
     checkHealth();
     
     const priceInterval = setInterval(fetchPrices, 3000);
@@ -88,11 +95,31 @@ function App() {
     } catch (e) { console.error("Watchlist fetch failed"); }
   };
 
+  const fetchJournal = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/journal`);
+      setJournal(res.data);
+    } catch (e) { console.error("Journal fetch failed"); }
+  };
+
   const addToWatchlist = async (symbol) => {
     try {
       await axios.post(`${API_BASE}/watchlist`, { symbol });
       fetchWatchlist();
     } catch (e) { console.error("Add failed"); }
+  };
+
+  const saveNote = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API_BASE}/journal`, { 
+        ...newNote, 
+        symbol: selectedSymbol.split(':')[1] || selectedSymbol 
+      });
+      setNewNote({ title: '', content: '' });
+      setIsJournalOpen(false);
+      fetchJournal();
+    } catch (e) { console.error("Save failed"); }
   };
 
   const tickerItems = Object.entries(prices).map(([pair, data]) => (
@@ -122,15 +149,18 @@ function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div 
+            onClick={() => setIsJournalOpen(!isJournalOpen)}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-lime)' }}
+          >
+            <BookOpen size={18} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>JOURNAL</span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
             <ShieldCheck size={14} color={isHealthOk ? "var(--accent-lime)" : "var(--down)"} />
             <span style={{ color: isHealthOk ? "var(--accent-lime)" : "var(--down)" }}>
               {isHealthOk ? "QUANTUM SECURE" : "CONNECTION LOST"}
             </span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <div className="glass-card" style={{ padding: '0.5rem', borderRadius: '0.5rem' }}><Bell size={18} /></div>
-            <div className="glass-card" style={{ padding: '0.5rem', borderRadius: '0.5rem' }}><Search size={18} /></div>
           </div>
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-purple)' }}></div>
         </div>
@@ -140,13 +170,78 @@ function App() {
       <div className="ticker-bar">
         <div className="animate-ticker">
           {tickerItems}
-          {tickerItems} {/* Duplicate for seamless loop */}
+          {tickerItems}
         </div>
       </div>
 
       {/* Main Chart Stage */}
       <main className="main-stage">
         <TradingViewWidget symbol={selectedSymbol} />
+        
+        {/* Journal Slide-over */}
+        <AnimatePresence>
+          {isJournalOpen && (
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={{ 
+                position: 'absolute', 
+                right: 0, 
+                top: 0, 
+                width: '400px', 
+                height: '100%', 
+                background: 'var(--bg-panel)', 
+                borderLeft: '1px solid var(--border-glass)',
+                zIndex: 50,
+                padding: '2rem'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                <h2 style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                   <History size={20} /> Market Journal
+                </h2>
+                <span onClick={() => setIsJournalOpen(false)} style={{ cursor: 'pointer', opacity: 0.5 }}>✕</span>
+              </div>
+
+              {/* Journal Form */}
+              <form onSubmit={saveNote} className="glass-card" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input 
+                  type="text" 
+                  placeholder="Note Title (e.g. BTC Breakout Plan)" 
+                  value={newNote.title}
+                  onChange={e => setNewNote({...newNote, title: e.target.value})}
+                  required
+                  style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-glass)', padding: '0.5rem', color: 'white', width: '100%' }}
+                />
+                <textarea 
+                  placeholder="Market analysis details..." 
+                  value={newNote.content}
+                  onChange={e => setNewNote({...newNote, content: e.target.value})}
+                  style={{ background: 'transparent', border: '1px solid var(--border-glass)', padding: '0.75rem', borderRadius: '0.5rem', color: 'white', minHeight: '100px' }}
+                />
+                <button type="submit" className="btn-lime" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  <Send size={16} /> Save Analysis
+                </button>
+              </form>
+
+              {/* Journal History */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', maxHeight: 'calc(100% - 300px)' }}>
+                {journal.map((note) => (
+                  <div key={note.id} className="glass-card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--accent-lime)' }}>{note.symbol}</span>
+                      <span style={{ fontSize: '0.65rem', opacity: 0.4 }}>{new Date(note.timestamp).toLocaleString()}</span>
+                    </div>
+                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>{note.title}</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>{note.content}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Side Panel */}
@@ -162,7 +257,7 @@ function App() {
                 key={item.id} 
                 className="glass-card" 
                 style={{ padding: '0.75rem', cursor: 'pointer', borderColor: selectedSymbol.includes(item.symbol) ? 'var(--accent-lime)' : 'var(--border-glass)' }}
-                onClick={() => setSelectedSymbol(item.symbol === 'BTC' ? 'BINANCE:BTCUSDT' : item.symbol === 'ETH' ? 'BINANCE:ETHUSDT' : item.symbol)}
+                onClick={() => setSelectedSymbol(item.symbol.includes(':') ? item.symbol : `BINANCE:${item.symbol}USDT`)}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700 }}>{item.symbol}</span>
@@ -208,7 +303,7 @@ function App() {
           
           <div style={{ marginTop: '2rem' }}>
              <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.5 }}>
-               Quantum AI identifies high-probability liquidity zones in XAU/USD. Suggesting long position above 2345.50.
+               Quantum AI identifies high-probability liquidity zones. Suggesting focus on recent volatility spikes in {selectedSymbol.split(':')[1] || selectedSymbol}.
              </p>
           </div>
         </div>

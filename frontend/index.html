@@ -1,94 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zenith Trading Terminal</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <header>
-        <h1>Zenith Quantum Terminal</h1>
-        <div id="health-status">Checking system status...</div>
-    </header>
-
-    <main>
-        <section class="panel">
-            <h2>Live Market Prices</h2>
-            <ul id="price-list">Waiting for backend connection...</ul>
-        </section>
-
-        <section class="panel">
-            <h2>My Watchlist</h2>
-            <form id="watchlist-form">
-                <input type="text" id="symbol-input" placeholder="e.g. AAPL, TSLA" required>
-                <button type="submit">Add to Watchlist</button>
-            </form>
-            <ul id="watchlist"></ul>
-        </section>
-    </main>
-
-    <script>
-        // Connect to Flask Backend
-        const API_BASE = 'http://localhost:5000/api';
-
-        // 1. Fetch Health Status
-        fetch(`${API_BASE}/health`)
-            .then(res => res.json())
-            .then(data => {
-                const healthDiv = document.getElementById('health-status');
-                healthDiv.innerText = `System: ${data.status.toUpperCase()} | DB: ${data.database}`;
-                healthDiv.className = data.status === 'online' ? 'online' : 'error';
-            }).catch(err => console.log("Backend offline"));
-
-        // 2. Fetch Live Prices
-        fetch(`${API_BASE}/prices`)
-            .then(res => res.json())
-            .then(data => {
-                const priceList = document.getElementById('price-list');
-                priceList.innerHTML = '';
-                for (const [pair, info] of Object.entries(data)) {
-                    const li = document.createElement('li');
-                    const colorClass = info.change.includes('+') ? 'profit' : 'loss';
-                    li.innerHTML = `<strong>${pair}</strong>: $${info.price} <span class="${colorClass}">(${info.change})</span>`;
-                    priceList.appendChild(li);
-                }
-            });
-
-        // 3. Handle Form Submission (POST Data to API)
-        document.getElementById('watchlist-form').addEventListener('submit', function(e) {
-            e.preventDefault(); // Prevent page reload
-            const symbol = document.getElementById('symbol-input').value;
-
-            fetch(`${API_BASE}/watchlist`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol: symbol })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('symbol-input').value = ''; // Clear input
-                loadWatchlist(); // Refresh the list
-            });
-        });
-
-        // 4. Fetch and Display Watchlist
-        function loadWatchlist() {
-            fetch(`${API_BASE}/watchlist`)
-                .then(res => res.json())
-                .then(data => {
-                    const list = document.getElementById('watchlist');
-                    list.innerHTML = '';
-                    data.forEach(item => {
-                        const li = document.createElement('li');
-                        li.innerText = `Tracking: ${item.symbol}`;
-                        list.appendChild(li);
-                    });
-                });
-        }
-
-        // Run on page load
-        loadWatchlist();
-    </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

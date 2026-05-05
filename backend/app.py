@@ -18,6 +18,7 @@ MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/zenith_db")
 client = MongoClient(MONGO_URI)
 db = client.get_database()
 watchlist_collection = db.watchlist
+journal_collection = db.journal
 
 # Price Simulation for non-crypto (real-time crypto from Binance)
 def get_crypto_price(symbol):
@@ -78,6 +79,27 @@ def handle_watchlist():
 def remove_from_watchlist(pair_id):
     watchlist_collection.delete_one({"id": pair_id})
     return jsonify({"message": "Removed"}), 200
+
+@app.route('/api/journal', methods=['GET', 'POST'])
+def handle_journal():
+    """Form submission endpoint for market notes."""
+    if request.method == 'POST':
+        data = request.json
+        if not data or 'title' not in data:
+            return jsonify({"error": "Title is required"}), 400
+        
+        note = {
+            "id": str(uuid.uuid4()),
+            "title": data.get('title'),
+            "content": data.get('content', ''),
+            "symbol": data.get('symbol', 'Global'),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        journal_collection.insert_one(note.copy())
+        return jsonify(note), 201
+        
+    notes = list(journal_collection.find({}, {'_id': 0}).sort("timestamp", -1))
+    return jsonify(notes), 200
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))

@@ -4,11 +4,3 @@ pymongo
 python-dotenv
 requests
 dnspython
-Flask==2.3.3
-flask-cors==4.0.0
-pymongo==4.5.0
-requests==2.31.0
-python-dotenv==1.0.0
-pytest==7.4.3
-pytest-cov==4.1.0
-mongomock==4.1.2
