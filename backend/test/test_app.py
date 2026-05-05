@@ -13,7 +13,7 @@ def client():
         yield client
 
 # --- 1. Test Health Endpoint ---
-@patch('app.client.admin.command')
+@patch('backend.app.client.admin.command')  # Changed from 'app.client.admin.command'
 def test_health_check(mock_ping, client):
     # Mock the database ping to return True
     mock_ping.return_value = True 
@@ -25,7 +25,7 @@ def test_health_check(mock_ping, client):
     assert data['database'] == "connected"
 
 # --- 2. Test Prices Endpoint ---
-@patch('app.requests.get')
+@patch('backend.app.requests.get')  # Changed from 'app.requests.get'
 def test_get_prices(mock_get, client):
     # Mock the Binance API response so we don't need real internet
     mock_response = MagicMock()
@@ -41,7 +41,7 @@ def test_get_prices(mock_get, client):
     assert 'XAU/USD' in data
 
 # --- 3. Test Watchlist Endpoints ---
-@patch('app.watchlist_collection.insert_one')
+@patch('backend.app.watchlist_collection.insert_one')  # Changed from 'app.watchlist_collection.insert_one'
 def test_add_to_watchlist(mock_insert, client):
     payload = {"symbol": "TSLA"}
     response = client.post('/api/watchlist', json=payload)
@@ -54,7 +54,7 @@ def test_add_to_watchlist_missing_symbol(client):
     response = client.post('/api/watchlist', json={})
     assert response.status_code == 400
 
-@patch('app.watchlist_collection.find')
+@patch('backend.app.watchlist_collection.find')  # Changed from 'app.watchlist_collection.find'
 def test_get_watchlist(mock_find, client):
     # Fake database return data
     mock_find.return_value = [{"id": "123", "symbol": "AAPL", "added_at": "2026-05-05"}]
@@ -63,7 +63,7 @@ def test_get_watchlist(mock_find, client):
     assert response.status_code == 200
     assert len(json.loads(response.data)) == 1
 
-@patch('app.watchlist_collection.delete_one')
+@patch('backend.app.watchlist_collection.delete_one')  # Changed from 'app.watchlist_collection.delete_one'
 def test_remove_from_watchlist(mock_delete, client):
     response = client.delete('/api/watchlist/123')
     assert response.status_code == 200
@@ -71,7 +71,7 @@ def test_remove_from_watchlist(mock_delete, client):
     mock_delete.assert_called_once_with({"id": "123"})
 
 # --- 4. Test Journal Endpoints ---
-@patch('app.journal_collection.insert_one')
+@patch('backend.app.journal_collection.insert_one')  # Changed from 'app.journal_collection.insert_one'
 def test_add_to_journal(mock_insert, client):
     payload = {"title": "Good Trade", "content": "Bought the dip"}
     response = client.post('/api/journal', json=payload)
@@ -80,7 +80,7 @@ def test_add_to_journal(mock_insert, client):
     assert json.loads(response.data)['title'] == "Good Trade"
     mock_insert.assert_called_once()
 
-@patch('app.journal_collection.find')
+@patch('backend.app.journal_collection.find')  # Changed from 'app.journal_collection.find'
 def test_get_journal(mock_find, client):
     # We have to mock the .sort() method chained onto .find()
     mock_cursor = MagicMock()
