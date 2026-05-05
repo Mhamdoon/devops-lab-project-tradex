@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 import json
 
 # Import the Flask app from your backend folder
-from app import app
+from backend.app import app
 
 @pytest.fixture
 def client():
