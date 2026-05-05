@@ -4,10 +4,12 @@ import sys
 import os
 from datetime import datetime
 
-# Add the backend directory (parent of 'test') to Python path
+# Add the backend directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app import app, client, db
+# Import the module to access globals, and the Flask app instance
+import app as app_module
+from app import app
 import mongomock
 
 @pytest.fixture
@@ -17,27 +19,25 @@ def test_client():
 
     # Create a mock MongoDB client and a named database
     mock_client = mongomock.MongoClient()
-    mock_db = mock_client['zenith_db_test']  # Provide a database name
+    mock_db = mock_client['zenith_db_test']
 
-    # Replace the real watchlist collection with the mock one
-    original_collection = app.watchlist_collection
-    app.watchlist_collection = mock_db.watchlist
+    # Store original global variables from app_module
+    original_watchlist_collection = app_module.watchlist_collection
+    original_client = app_module.client
+    original_db = app_module.db
 
-    # Also replace the module-level client and db for health checks
-    # (so that client.admin.command('ping') works with mock)
-    import app as app_module
-    original_module_client = app_module.client
-    original_module_db = app_module.db
+    # Replace with mocks
+    app_module.watchlist_collection = mock_db.watchlist
     app_module.client = mock_client
     app_module.db = mock_db
 
     with app.test_client() as client:
         yield client
 
-    # Restore original values
-    app.watchlist_collection = original_collection
-    app_module.client = original_module_client
-    app_module.db = original_module_db
+    # Restore originals after test
+    app_module.watchlist_collection = original_watchlist_collection
+    app_module.client = original_client
+    app_module.db = original_db
 
 @pytest.fixture
 def sample_watchlist_item():
@@ -47,7 +47,7 @@ def sample_watchlist_item():
         "added_at": datetime.utcnow().isoformat()
     }
 
-# ========== All test functions remain unchanged ==========
+# ========== All test functions remain exactly as before ==========
 def test_health_check(test_client):
     response = test_client.get('/api/health')
     assert response.status_code == 200
