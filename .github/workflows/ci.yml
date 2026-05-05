@@ -25,7 +25,7 @@ jobs:
         
     - name: Run Pytest
       run: |
-        python -m pytest backend/test/
+        PYTHONPATH=. python -m pytest backend/test/
 
   build:
     needs: test
