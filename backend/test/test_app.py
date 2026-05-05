@@ -1,8 +1,17 @@
 import pytest
 import json
-import mongomock
-from ../app.py import app, client, db, watchlist_collection
+import sys
+import os
 from datetime import datetime
+
+# Add the backend directory to Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+
+# Import the Flask app
+from app import app, client, db
+
+# Use mongomock for testing without real MongoDB
+import mongomock
 
 @pytest.fixture
 def test_client():
@@ -14,8 +23,8 @@ def test_client():
     mock_client = mongomock.MongoClient()
     mock_db = mock_client.get_database()
     
-    # Replace the real collection with mock
-    original_collection = watchlist_collection
+    # Store original collection and replace with mock
+    original_collection = app.watchlist_collection
     app.watchlist_collection = mock_db.watchlist
     
     with app.test_client() as client:
@@ -79,6 +88,18 @@ def test_prices_data_types(test_client):
     assert isinstance(data['XAU/USD']['price'], float)
     assert isinstance(data['EUR/USD']['price'], float)
 
+def test_prices_change_format(test_client):
+    """Test that price changes are in percentage format"""
+    response = test_client.get('/api/prices')
+    data = json.loads(response.data)
+    
+    for symbol, price_data in data.items():
+        change = price_data['change']
+        # Should contain % sign
+        assert '%' in change
+        # Should have + or - sign
+        assert change[0] in ['+', '-']
+
 def test_create_watchlist_item(test_client):
     """Test adding a new item to watchlist"""
     new_item = {"symbol": "ETH/USDT"}
@@ -94,8 +115,8 @@ def test_create_watchlist_item(test_client):
     assert 'id' in data
     assert 'added_at' in data
     
-    # Verify ID is a valid UUID format
-    assert len(data['id']) == 36  # UUID length
+    # Verify ID is a valid UUID format (36 characters including hyphens)
+    assert len(data['id']) == 36
 
 def test_create_watchlist_missing_symbol(test_client):
     """Test creating watchlist item without symbol returns error"""
@@ -283,3 +304,27 @@ def test_watchlist_idempotency(test_client):
     
     symbol_count = sum(1 for item in watchlist if item['symbol'] == symbol)
     assert symbol_count == 2
+
+def test_health_check_database_connection(test_client):
+    """Test that health check includes database status"""
+    response = test_client.get('/api/health')
+    data = json.loads(response.data)
+    
+    # Database should be 'connected' even with mock (or 'error' if real DB is down)
+    assert 'database' in data
+    assert data['database'] in ['connected', 'error']
+
+def test_watchlist_returns_no_mongo_id(test_client):
+    """Test that watchlist items don't expose MongoDB _id field"""
+    # Create an item
+    test_client.post('/api/watchlist',
+                    data=json.dumps({"symbol": "BTC/USDT"}),
+                    content_type='application/json')
+    
+    # Get watchlist
+    response = test_client.get('/api/watchlist')
+    watchlist = json.loads(response.data)
+    
+    # Check that _id is not in any item
+    for item in watchlist:
+        assert '_id' not in item
