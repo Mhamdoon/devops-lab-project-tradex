@@ -1,7 +1,7 @@
 import pytest
 import json
 import mongomock
-from app import app, client, db, watchlist_collection
+from ../app.py import app, client, db, watchlist_collection
 from datetime import datetime
 
 @pytest.fixture
