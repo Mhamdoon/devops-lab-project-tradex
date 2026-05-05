@@ -7,41 +7,47 @@ from datetime import datetime
 # Add the backend directory (parent of 'test') to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Now import from app.py which lives in the same 'backend' directory
 from app import app, client, db
-
 import mongomock
 
 @pytest.fixture
 def test_client():
     """Create a test client with mocked MongoDB"""
-    # Configure app for testing
     app.config['TESTING'] = True
-    
-    # Create a mock MongoDB client
+
+    # Create a mock MongoDB client and a named database
     mock_client = mongomock.MongoClient()
-    mock_db = mock_client.get_database()
-    
-    # Store original collection and replace with mock
+    mock_db = mock_client['zenith_db_test']  # Provide a database name
+
+    # Replace the real watchlist collection with the mock one
     original_collection = app.watchlist_collection
     app.watchlist_collection = mock_db.watchlist
-    
+
+    # Also replace the module-level client and db for health checks
+    # (so that client.admin.command('ping') works with mock)
+    import app as app_module
+    original_module_client = app_module.client
+    original_module_db = app_module.db
+    app_module.client = mock_client
+    app_module.db = mock_db
+
     with app.test_client() as client:
         yield client
-    
-    # Restore original collection after tests
+
+    # Restore original values
     app.watchlist_collection = original_collection
+    app_module.client = original_module_client
+    app_module.db = original_module_db
 
 @pytest.fixture
 def sample_watchlist_item():
-    """Create a sample watchlist item for testing"""
     return {
         "symbol": "BTC/USDT",
         "id": "test-id-123",
-        "added_at": datetime.utcnow().isoformat()   # added missing field
+        "added_at": datetime.utcnow().isoformat()
     }
 
-# All test functions remain as they were (they are correct)
+# ========== All test functions remain unchanged ==========
 def test_health_check(test_client):
     response = test_client.get('/api/health')
     assert response.status_code == 200
@@ -226,7 +232,8 @@ def test_health_check_database_connection(test_client):
     response = test_client.get('/api/health')
     data = json.loads(response.data)
     assert 'database' in data
-    assert data['database'] in ['connected', 'error']
+    # Mock client passes ping, so it should be 'connected'
+    assert data['database'] == 'connected'
 
 def test_watchlist_returns_no_mongo_id(test_client):
     test_client.post('/api/watchlist',
