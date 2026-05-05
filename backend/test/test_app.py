@@ -4,13 +4,12 @@ import sys
 import os
 from datetime import datetime
 
-# Add the backend directory to Python path (correct relative path)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+# Add the backend directory (parent of 'test') to Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import the Flask app
+# Now import from app.py which lives in the same 'backend' directory
 from app import app, client, db
 
-# Use mongomock for testing without real MongoDB
 import mongomock
 
 @pytest.fixture
