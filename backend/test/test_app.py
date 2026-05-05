@@ -13,10 +13,11 @@ def client():
         yield client
 
 # --- 1. Test Health Endpoint ---
-@patch('backend.app.client.admin.command')  # Changed from 'app.client.admin.command'
-def test_health_check(mock_ping, client):
-    # Mock the database ping to return True
-    mock_ping.return_value = True 
+@patch('backend.app.client')  # Mock the MongoDB client
+def test_health_check(mock_db_client, client):
+    # Mock the database ping to return True without connecting
+    mock_db_client.admin.command.return_value = {'ok': 1}
+    
     response = client.get('/api/health')
     
     assert response.status_code == 200
@@ -25,7 +26,7 @@ def test_health_check(mock_ping, client):
     assert data['database'] == "connected"
 
 # --- 2. Test Prices Endpoint ---
-@patch('backend.app.requests.get')  # Changed from 'app.requests.get'
+@patch('backend.app.requests.get')
 def test_get_prices(mock_get, client):
     # Mock the Binance API response so we don't need real internet
     mock_response = MagicMock()
@@ -41,51 +42,69 @@ def test_get_prices(mock_get, client):
     assert 'XAU/USD' in data
 
 # --- 3. Test Watchlist Endpoints ---
-@patch('backend.app.watchlist_collection.insert_one')  # Changed from 'app.watchlist_collection.insert_one'
-def test_add_to_watchlist(mock_insert, client):
+@patch('backend.app.db')  # Mock the database object
+def test_add_to_watchlist(mock_db, client):
+    # Create mock collection
+    mock_collection = MagicMock()
+    mock_db.watchlist = mock_collection
+    
     payload = {"symbol": "TSLA"}
     response = client.post('/api/watchlist', json=payload)
     
     assert response.status_code == 201
     assert json.loads(response.data)['symbol'] == "TSLA"
-    mock_insert.assert_called_once() # Verify it tried to save to DB
+    mock_collection.insert_one.assert_called_once()
 
 def test_add_to_watchlist_missing_symbol(client):
     response = client.post('/api/watchlist', json={})
     assert response.status_code == 400
 
-@patch('backend.app.watchlist_collection.find')  # Changed from 'app.watchlist_collection.find'
-def test_get_watchlist(mock_find, client):
+@patch('backend.app.db')
+def test_get_watchlist(mock_db, client):
+    # Create mock collection
+    mock_collection = MagicMock()
+    mock_db.watchlist = mock_collection
     # Fake database return data
-    mock_find.return_value = [{"id": "123", "symbol": "AAPL", "added_at": "2026-05-05"}]
+    mock_collection.find.return_value = [{"id": "123", "symbol": "AAPL", "added_at": "2026-05-05"}]
     
     response = client.get('/api/watchlist')
     assert response.status_code == 200
     assert len(json.loads(response.data)) == 1
 
-@patch('backend.app.watchlist_collection.delete_one')  # Changed from 'app.watchlist_collection.delete_one'
-def test_remove_from_watchlist(mock_delete, client):
+@patch('backend.app.db')
+def test_remove_from_watchlist(mock_db, client):
+    # Create mock collection
+    mock_collection = MagicMock()
+    mock_db.watchlist = mock_collection
+    
     response = client.delete('/api/watchlist/123')
     assert response.status_code == 200
     assert json.loads(response.data)['message'] == "Removed"
-    mock_delete.assert_called_once_with({"id": "123"})
+    mock_collection.delete_one.assert_called_once_with({"id": "123"})
 
 # --- 4. Test Journal Endpoints ---
-@patch('backend.app.journal_collection.insert_one')  # Changed from 'app.journal_collection.insert_one'
-def test_add_to_journal(mock_insert, client):
+@patch('backend.app.db')
+def test_add_to_journal(mock_db, client):
+    # Create mock collection
+    mock_collection = MagicMock()
+    mock_db.journal = mock_collection
+    
     payload = {"title": "Good Trade", "content": "Bought the dip"}
     response = client.post('/api/journal', json=payload)
     
     assert response.status_code == 201
     assert json.loads(response.data)['title'] == "Good Trade"
-    mock_insert.assert_called_once()
+    mock_collection.insert_one.assert_called_once()
 
-@patch('backend.app.journal_collection.find')  # Changed from 'app.journal_collection.find'
-def test_get_journal(mock_find, client):
+@patch('backend.app.db')
+def test_get_journal(mock_db, client):
+    # Create mock collection
+    mock_collection = MagicMock()
+    mock_db.journal = mock_collection
     # We have to mock the .sort() method chained onto .find()
     mock_cursor = MagicMock()
     mock_cursor.sort.return_value = [{"id": "abc", "title": "Good Trade", "content": "Bought the dip"}]
-    mock_find.return_value = mock_cursor
+    mock_collection.find.return_value = mock_cursor
 
     response = client.get('/api/journal')
     assert response.status_code == 200
